@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { arrayToBox, getLongestEdgeIndex } from './BoundsUtilities.js';
 import { CENTER, AVERAGE, SAH } from './Constants.js';
 

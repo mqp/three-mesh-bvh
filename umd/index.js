@@ -1,8 +1,8 @@
 (function (global, factory) {
-	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('three')) :
-	typeof define === 'function' && define.amd ? define(['exports', 'three'], factory) :
-	(global = global || self, factory(global.MeshBVHLib = global.MeshBVHLib || {}, global.THREE));
-}(this, function (exports, THREE) { 'use strict';
+	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
+	typeof define === 'function' && define.amd ? define(['exports'], factory) :
+	(global = global || self, factory(global.MeshBVHLib = global.MeshBVHLib || {}));
+}(this, function (exports) { 'use strict';
 
 	// From THREE.js Mesh raycast
 	var vA = new THREE.Vector3();
@@ -205,7 +205,7 @@
 
 		constructor() {
 
-			// internal nodes have boundingData, children, and splitAxis
+			// internal nodes have boundingData, left, right, and splitAxis
 			// leaf nodes have offset and count (referring to primitives in the mesh geometry)
 
 		}
@@ -221,12 +221,14 @@
 		raycast( mesh, raycaster, ray, intersects ) {
 
 			if ( this.count ) intersectTris( mesh, mesh.geometry, raycaster, ray, this.offset, this.count, intersects );
-			else this.children.forEach( c => {
+			else {
 
-				if ( c.intersectRay( ray, boxIntersection ) )
-					c.raycast( mesh, raycaster, ray, intersects );
+				if ( this.left.intersectRay( ray, boxIntersection ) )
+					this.left.raycast( mesh, raycaster, ray, intersects );
+				if ( this.right.intersectRay( ray, boxIntersection ) )
+					this.right.raycast( mesh, raycaster, ray, intersects );
 
-			} );
+			}
 
 		}
 
@@ -241,7 +243,6 @@
 
 				// consider the position of the split plane with respect to the oncoming ray; whichever direction
 				// the ray is coming from, look for an intersection among that side of the tree first
-				const children = this.children;
 				const splitAxis = this.splitAxis;
 				const xyzAxis = xyzFields[ splitAxis ];
 				const rayDir = ray.direction[ xyzAxis ];
@@ -251,13 +252,13 @@
 				let c1, c2;
 				if ( leftToRight ) {
 
-					c1 = children[ 0 ];
-					c2 = children[ 1 ];
+					c1 = this.left;
+					c2 = this.right;
 
 				} else {
 
-					c1 = children[ 1 ];
-					c2 = children[ 0 ];
+					c1 = this.right;
+					c2 = this.left;
 
 				}
 
@@ -764,20 +765,19 @@
 
 				} else {
 
+					node.splitAxis = split.axis;
+
 					// create the left child and compute its bounding box
-					const left = new MeshBVHNode();
+					const left = node.left = new MeshBVHNode();
 					const lstart = offset, lcount = splitOffset - offset;
 					left.boundingData = ctx.getBounds( lstart, lcount, new Float32Array( 6 ) );
 					splitNode( left, lstart, lcount, depth + 1 );
 
 					// repeat for right
-					const right = new MeshBVHNode();
+					const right = node.right = new MeshBVHNode();
 					const rstart = splitOffset, rcount = count - lcount;
 					right.boundingData = ctx.getBounds( rstart, rcount, new Float32Array( 6 ) );
 					splitNode( right, rstart, rcount, depth + 1 );
-
-					node.splitAxis = split.axis;
-					node.children = [ left, right ];
 
 				}
 
@@ -834,9 +834,11 @@
 
 					const recurse = ( n, d ) => {
 
+						let isLeaf = 'count' in n;
+
 						if ( d === this.depth ) return;
 
-						if ( d === this.depth - 1 || n.children == null || n.children.length === 0 ) {
+						if ( d === this.depth - 1 || isLeaf ) {
 
 							let m = requiredChildren < this.children.length ? this.children[ requiredChildren ] : null;
 							if ( ! m ) {
@@ -853,9 +855,10 @@
 
 						}
 
-						if ( n.children != null ) {
+						if ( ! isLeaf ) {
 
-							n.children.forEach( n => recurse( n, d + 1 ) );
+							recurse( n.left, d + 1 );
+							recurse( n.right, d + 1 );
 
 						}
 

@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import MeshBVH from './MeshBVH.js';
 import Visualizer from './MeshBVHVisualizer.js';
 import { CENTER, AVERAGE, SAH } from './Constants.js';

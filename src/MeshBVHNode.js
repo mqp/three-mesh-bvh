@@ -1,5 +1,3 @@
-
-import * as THREE from 'three';
 import { intersectTris, intersectClosestTri } from './GeometryUtilities.js';
 import { arrayToBox } from './BoundsUtilities.js';
 
